@@ -1,0 +1,116 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Driver GPS Uploader</title>
+  <meta name="theme-color" content="#0ea5e9" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div class="max-w-xl mx-auto p-6 space-y-4">
+    <h1 class="text-2xl font-bold">🚌 Driver GPS Uploader</h1>
+    <p class="text-sm text-slate-600">Keep this page open while driving. Your phone will send live GPS to the server.</p>
+
+    <div class="p-4 bg-white rounded-xl shadow space-y-3">
+      <label class="block text-sm font-medium">Bus ID</label>
+      <input id="busId" class="w-full border rounded-lg p-2" placeholder="e.g., BUS-101" />
+
+      <label class="block text-sm font-medium mt-3">JWT Token <span class="text-slate-500">(from /login)</span></label>
+      <input id="token" class="w-full border rounded-lg p-2" placeholder="paste token here" />
+
+      <button id="startBtn" class="mt-4 px-4 py-2 rounded-lg bg-sky-600 text-white font-medium">Start Tracking</button>
+      <button id="stopBtn" class="mt-2 px-4 py-2 rounded-lg bg-slate-200">Stop</button>
+
+      <div id="status" class="text-sm text-slate-700 mt-3"></div>
+    </div>
+
+    <div class="p-4 bg-white rounded-xl shadow">
+      <h2 class="font-semibold mb-2">Last Sent</h2>
+      <pre id="last" class="text-xs whitespace-pre-wrap"></pre>
+    </div>
+  </div>
+
+<script>
+let watchId = null;
+const params = new URLSearchParams(location.search);
+document.getElementById('busId').value = params.get('busId') || '';
+document.getElementById('token').value = params.get('token') || '';
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => console.log('Wake Lock released'));
+    }
+  } catch (e) {
+    console.warn('WakeLock not available:', e);
+  }
+}
+
+function sendUpdate(busId, token, coords) {
+  const payload = {
+    id: busId,
+    lat: coords.latitude,
+    lng: coords.longitude,
+    speed: coords.speed || null,
+    occupancy: null
+  };
+  return fetch('/api/update-location', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify(payload)
+  }).then(r => r.json());
+}
+
+document.getElementById('startBtn').addEventListener('click', async () => {
+  const busId = document.getElementById('busId').value.trim();
+  const token = document.getElementById('token').value.trim();
+  const status = document.getElementById('status');
+  const last = document.getElementById('last');
+
+  if (!busId || !token) {
+    status.textContent = 'Enter Bus ID and Token';
+    return;
+  }
+
+  await requestWakeLock();
+
+  if (!('geolocation' in navigator)) {
+    status.textContent = 'Geolocation not supported';
+    return;
+  }
+
+  status.textContent = 'Starting... grant location permission';
+  watchId = navigator.geolocation.watchPosition(async (pos) => {
+    status.textContent = 'Sending live updates...';
+    const data = await sendUpdate(busId, token, pos.coords).catch(err => ({ error: err.message }));
+    last.textContent = JSON.stringify({ sentAt: new Date().toISOString(), coords: pos.coords, server: data }, null, 2);
+  }, (err) => {
+    status.textContent = 'Error: ' + err.message;
+  }, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 15000
+  });
+});
+
+document.getElementById('stopBtn').addEventListener('click', () => {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    document.getElementById('status').textContent = 'Stopped';
+  }
+  if (wakeLock) {
+    wakeLock.release();
+    wakeLock = null;
+  }
+});
+</script>
+</body>
+</html>

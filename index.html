@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bus Tracking System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 25%, #06b6d4 50%, #0891b2 75%, #0e7490 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 3rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 2rem;
+        }
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        h1 {
+            color: #1e3a8a;
+            margin-bottom: 1rem;
+        }
+        .description {
+            color: #4b5563;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        .buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #10b981;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        .btn-admin {
+            background: #f59e0b;
+            color: white;
+        }
+        .btn-admin:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+        }
+        .setup-info {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f3f4f6;
+            border-radius: 0.5rem;
+            text-align: left;
+        }
+        .setup-info h3 {
+            color: #1e3a8a;
+            margin-bottom: 0.5rem;
+        }
+        .setup-info ul {
+            margin: 0;
+            padding-left: 1.5rem;
+        }
+        .setup-info li {
+            margin-bottom: 0.25rem;
+            color: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🚌</div>
+        <h1>Bus Tracking System</h1>
+        <p class="description">
+            Welcome to the Real-Time Public Transport Tracking System for Small Cities. 
+            Track buses, view routes, and get real-time updates on bus locations and schedules.
+        </p>
+        
+        <div class="buttons">
+            <a href="Docs/index.html" class="btn btn-primary">🚌 Launch Application</a>
+            <a href="admin/dashboard.php" class="btn btn-admin">⚙️ Admin Dashboard</a>
+            <a href="setup_database.php" class="btn btn-secondary">🗄️ Setup Database</a>
+        </div>
+
+        <div class="setup-info">
+            <h3>🚀 Quick Start Guide:</h3>
+            <ul>
+                <li><strong>1.</strong> Make sure XAMPP is running (Apache + MySQL)</li>
+                <li><strong>2.</strong> Run <a href="setup_database.php">Database Setup</a> first</li>
+                <li><strong>3.</strong> Access the <a href="Docs/index.html">Main Application</a></li>
+                <li><strong>4.</strong> Use <a href="admin/dashboard.php">Admin Dashboard</a> to manage buses</li>
+            </ul>
+        </div>
+
+        <div class="setup-info">
+            <h3>🔐 Default Login:</h3>
+            <ul>
+                <li><strong>Username:</strong> admin</li>
+                <li><strong>Password:</strong> admin123</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Auto-redirect after 5 seconds if user doesn't click anything
+        setTimeout(function() {
+            if (confirm('Redirecting to main application in 5 seconds. Click OK to go now, or Cancel to stay here.')) {
+                window.location.href = 'Docs/index.html';
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

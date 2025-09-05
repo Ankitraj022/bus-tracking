@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Bus Tracker - Small Cities</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+   <script src="chatbot.js"></script>
+   <script src="languages.js"></script>
+  <style>
+    .bus-marker {
+      background-color: #ef4444;
+      border: 2px solid white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+    .loading {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
+    }
+    #map {
+      height: 400px;
+      width: 100%;
+      border-radius: 0 0 8px 8px;
+    }
+    .bus-icon {
+      background: #ef4444;
+      border: 2px solid white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .route-line {
+      stroke: #3b82f6;
+      stroke-width: 4;
+      stroke-dasharray: 10;
+      animation: dash 1s linear infinite;
+    }
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -20;
+      }
+    }
+    .suggestion-item {
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .suggestion-item:hover {
+      background-color: #f3f4f6;
+    }
+    .route-line {
+      stroke: #3b82f6;
+      stroke-width: 4;
+      stroke-dasharray: 10;
+      animation: dash 1s linear infinite;
+    }
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -20;
+      }
+    }
+    .suggestion-item {
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+         .suggestion-item:hover {
+       background-color: #f3f4f6;
+     }
+     .animate-slide-up {
+       animation: slideUp 0.3s ease-out;
+     }
+     @keyframes slideUp {
+       from {
+         opacity: 0;
+         transform: translateY(20px);
+       }
+       to {
+         opacity: 1;
+         transform: translateY(0);
+       }
+     }
+   </style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- Navbar -->
+  <nav class="bg-white shadow-md py-3 px-6 flex justify-between items-center">
+    <!-- Logo -->
+    <div class="flex items-center space-x-2">
+      <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
+        <span class="text-white font-bold text-lg">🚌</span>
+      </div>
+      <span class="font-bold text-xl text-red-500">SmartBus Tracker</span>
+    </div>
+
+    <!-- Nav Links -->
+    <div class="hidden md:flex space-x-6 text-gray-700 font-medium">
+             <a href="#tracking" class="hover:text-red-500" data-translate="nav_live_tracking">Live Tracking</a>
+       <a href="#routes" class="hover:text-red-500" data-translate="nav_routes">Routes</a>
+       <a href="#help" class="hover:text-red-500" data-translate="nav_help">Help</a>
+               <a href="../Docs/login.html" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" data-translate="nav_login">Login</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 py-16 text-white">
+    <div class="container mx-auto text-center px-4">
+             <h1 class="text-4xl md:text-6xl font-bold mb-4" data-translate="hero_title">
+         Real-Time Bus Tracking
+       </h1>
+       <p class="text-xl mb-8 opacity-90" data-translate="hero_subtitle">Track buses live, check routes & estimated arrival times for small cities</p>
+
+      <!-- Enhanced Search Box -->
+      <div class="bg-white shadow-lg rounded-2xl p-6 max-w-4xl mx-auto">
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+          <!-- From -->
+          <div class="relative">
+                         <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="search_from">From</label>
+             <input type="text" id="fromLocation" placeholder="Enter starting location" 
+                    class="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-400 outline-none"
+                    oninput="showSuggestions('fromSuggestions', this.value)">
+            <div id="fromSuggestions" class="absolute z-10 w-full bg-white border rounded-lg shadow-lg hidden max-h-48 overflow-y-auto"></div>
+          </div>
+
+          <!-- To -->
+          <div class="relative">
+                         <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="search_to">To</label>
+             <input type="text" id="toLocation" placeholder="Enter destination" 
+                    class="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-400 outline-none"
+                    oninput="showSuggestions('toSuggestions', this.value)">
+            <div id="toSuggestions" class="absolute z-10 w-full bg-white border rounded-lg shadow-lg hidden max-h-48 overflow-y-auto"></div>
+          </div>
+        </div>
+
+        <!-- Search Button -->
+                 <button onclick="searchRoute()" class="w-full bg-red-500 text-white px-8 py-3 rounded-xl hover:bg-red-600 transition font-medium" data-translate="search_button">
+           Find Route
+         </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Route Results Section -->
+  <section id="routeResults" class="py-6 bg-gray-100 hidden">
+    <div class="container mx-auto px-4">
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Route Results</h2>
+        <div id="routeInfo" class="space-y-4">
+          <!-- Route information will be populated here -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Route Results Section -->
+  <section id="routeResults" class="py-6 bg-gray-100 hidden">
+    <div class="container mx-auto px-4">
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Route Results</h2>
+        <div id="routeInfo" class="space-y-4">
+          <!-- Route information will be populated here -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Tracking Section -->
+  <section id="tracking" class="py-10 container mx-auto px-4">
+    <div class="grid lg:grid-cols-3 gap-6">
+      
+      <!-- Map Container -->
+      <div class="lg:col-span-2 bg-white shadow-lg rounded-2xl overflow-hidden">
+        <div class="p-4 border-b bg-gray-50">
+          <h2 class="text-xl font-bold text-gray-800">Live Bus Locations</h2>
+          <p class="text-sm text-gray-600">Real-time tracking of all active buses</p>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <!-- Bus Status Panel -->
+      <div class="bg-white shadow-lg rounded-2xl p-6">
+                 <div class="flex justify-between items-center mb-4">
+           <h2 class="text-xl font-bold text-gray-800" data-translate="active_buses">Active Buses</h2>
+           <span id="busCount" class="bg-red-500 text-white px-2 py-1 rounded-full text-sm">0</span>
+         </div>
+        
+        <div id="busList" class="space-y-3">
+          <!-- Bus items will be populated here -->
+        </div>
+
+        <!-- Add Bus Button (for demo) -->
+                 <button onclick="addDemoBus()" class="w-full mt-4 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition" data-translate="add_demo_bus">
+           Add Demo Bus
+         </button>
+
+        <!-- Status Indicator -->
+        <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+          <p class="text-sm text-blue-700">
+            <span id="connectionStatus" class="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+            <span id="statusText">Connected to server</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Routes Section -->
+  <section id="routes" class="py-10 bg-white">
+    <div class="container mx-auto px-4">
+             <h2 class="text-3xl font-bold text-center mb-8" data-translate="popular_routes_title">Popular Routes</h2>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <div class="bg-gray-50 p-6 rounded-xl">
+          <h3 class="font-bold text-lg mb-2">Route PB-12</h3>
+          <p class="text-gray-600 mb-3">City Center ↔ Airport</p>
+          <div class="flex justify-between text-sm">
+            <span>Frequency: 15 mins</span>
+            <span class="text-green-600">Active</span>
+          </div>
+        </div>
+
+        <div class="bg-gray-50 p-6 rounded-xl">
+          <h3 class="font-bold text-lg mb-2">Route PB-21</h3>
+          <p class="text-gray-600 mb-3">Station ↔ University</p>
+          <div class="flex justify-between text-sm">
+            <span>Frequency: 20 mins</span>
+            <span class="text-green-600">Active</span>
+          </div>
+        </div>
+
+        <div class="bg-gray-50 p-6 rounded-xl">
+          <h3 class="font-bold text-lg mb-2">Route PB-45</h3>
+          <p class="text-gray-600 mb-3">Market ↔ IT Park</p>
+          <div class="flex justify-between text-sm">
+            <span>Frequency: 25 mins</span>
+            <span class="text-green-600">Active</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="py-10 bg-gray-50">
+    <div class="container mx-auto px-4">
+             <h2 class="text-3xl font-bold text-center mb-8" data-translate="features_title">Why Choose SmartBus Tracker?</h2>
+      <div class="grid md:grid-cols-3 gap-8">
+        
+        <div class="text-center">
+          <div class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span class="text-white text-2xl">📍</span>
+          </div>
+          <h3 class="font-bold text-lg mb-2">Real-Time Tracking</h3>
+          <p class="text-gray-600">Get live updates on bus locations and arrival times</p>
+        </div>
+
+        <div class="text-center">
+          <div class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span class="text-white text-2xl">📱</span>
+          </div>
+          <h3 class="font-bold text-lg mb-2">Low Bandwidth</h3>
+          <p class="text-gray-600">Optimized for small cities with limited internet connectivity</p>
+        </div>
+
+        <div class="text-center">
+          <div class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span class="text-white text-2xl">🚌</span>
+          </div>
+          <h3 class="font-bold text-lg mb-2">All Buses</h3>
+          <p class="text-gray-600">Track government and private buses in one platform</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+     <!-- Help Section -->
+   <section id="help" class="py-10 bg-gray-50">
+     <div class="container mx-auto px-4">
+               <h2 class="text-3xl font-bold text-center mb-8" data-translate="help_title">Help & Support</h2>
+       <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+         
+         <div class="bg-white p-6 rounded-xl shadow-lg">
+           <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mb-4">
+             <span class="text-white text-xl">🚌</span>
+           </div>
+           <h3 class="font-bold text-lg mb-2">Track Buses</h3>
+           <p class="text-gray-600 mb-3">Click "Add Demo Bus" to see live bus locations on the map. Buses update every 5 seconds.</p>
+           <button onclick="window.chatbot && window.chatbot.toggleChatbot()" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+             Ask Assistant →
+           </button>
+         </div>
+
+         <div class="bg-white p-6 rounded-xl shadow-lg">
+           <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-4">
+             <span class="text-white text-xl">🗺️</span>
+           </div>
+           <h3 class="font-bold text-lg mb-2">Find Routes</h3>
+           <p class="text-gray-600 mb-3">Use the search box at the top to find routes between locations. Get real-time route information.</p>
+           <button onclick="window.chatbot && window.chatbot.toggleChatbot()" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+             Ask Assistant →
+           </button>
+         </div>
+
+         <div class="bg-white p-6 rounded-xl shadow-lg">
+           <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mb-4">
+             <span class="text-white text-xl">📞</span>
+           </div>
+           <h3 class="font-bold text-lg mb-2">Contact Support</h3>
+           <p class="text-gray-600 mb-3">Need help? Our SmartBus Assistant is available 24/7. Click the chat button for instant support.</p>
+           <button onclick="window.chatbot && window.chatbot.toggleChatbot()" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+             Chat Now →
+           </button>
+         </div>
+       </div>
+     </div>
+   </section>
+
+   <!-- Footer -->
+   <footer class="bg-gray-800 text-white py-8">
+     <div class="container mx-auto px-4 text-center">
+       <p>&copy; 2024 SmartBus Tracker. Real-time public transport tracking for small cities.</p>
+     </div>
+   </footer>
+
+  <script>
+    // Global variables
+    let map;
+    let markers = {};
+    let buses = [];
+    let routeLine = null;
+    const SERVER_URL = 'http://localhost:3000';
+    let currentUser = null;
+    let authToken = localStorage.getItem('authToken');
+
+    // Popular locations for suggestions
+    const popularLocations = [
+      { name: "City Center", lat: 12.9716, lng: 77.5946 },
+      { name: "Airport", lat: 13.1986, lng: 77.7066 },
+      { name: "Central Station", lat: 12.9779, lng: 77.5689 },
+      { name: "University", lat: 12.9716, lng: 77.5946 },
+      { name: "IT Park", lat: 12.9716, lng: 77.5946 },
+      { name: "Shopping Mall", lat: 12.9716, lng: 77.5946 },
+      { name: "Hospital", lat: 12.9716, lng: 77.5946 },
+      { name: "Bus Terminal", lat: 12.9716, lng: 77.5946 },
+      { name: "Market Square", lat: 12.9716, lng: 77.5946 },
+      { name: "Park", lat: 12.9716, lng: 77.5946 }
+    ];
+
+    // Route database
+    const routes = [
+      {
+        id: "PB-12",
+        name: "City Center ↔ Airport",
+        from: "City Center",
+        to: "Airport",
+        frequency: "15 mins",
+        duration: "45 mins",
+        stops: ["City Center", "Central Station", "IT Park", "Airport"]
+      },
+      {
+        id: "PB-21", 
+        name: "Station ↔ University",
+        from: "Central Station",
+        to: "University",
+        frequency: "20 mins",
+        duration: "30 mins",
+        stops: ["Central Station", "Market Square", "University"]
+      },
+      {
+        id: "PB-45",
+        name: "Market ↔ IT Park", 
+        from: "Market Square",
+        to: "IT Park",
+        frequency: "25 mins",
+        duration: "25 mins",
+        stops: ["Market Square", "IT Park"]
+      }
+    ];
+
+         // Initialize the application
+     function initApp() {
+       // For now, skip authentication to allow direct access
+       // TODO: Implement proper authentication later
+       console.log('Initializing app without authentication...');
+       
+       // Initialize components directly
+       initMap();
+       loadBuses();
+       setInterval(loadBuses, 5000); // Update every 5 seconds
+       updateConnectionStatus();
+       setupEventListeners();
+     }
+
+    // Verify authentication and load user
+    async function verifyAuthAndLoadUser() {
+      try {
+        const response = await fetch(`${SERVER_URL}/api/auth/profile`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          currentUser = data.user;
+          updateUserInterface();
+          initMap();
+          loadBuses();
+          setInterval(loadBuses, 5000); // Update every 5 seconds
+          updateConnectionStatus();
+          setupEventListeners();
+        } else {
+          // Token is invalid, redirect to login
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
+      } catch (error) {
+        console.error('Auth verification error:', error);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+    }
+
+         // Update user interface with user info
+     function updateUserInterface() {
+       if (currentUser) {
+         // Update navbar with user info
+         const userInfo = document.createElement('div');
+         userInfo.className = 'flex items-center space-x-4';
+                   userInfo.innerHTML = `
+            <span class="text-gray-700" data-translate="nav_welcome">Welcome</span>, ${currentUser.name}
+            <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" data-translate="nav_logout">Logout</button>
+          `;
+         
+         // Replace the login button with user info
+         const loginButton = document.querySelector('a[href="#"]');
+         if (loginButton) {
+           loginButton.parentNode.replaceChild(userInfo, loginButton);
+         }
+
+         // Update chatbot with user info
+         if (window.chatbot) {
+           window.chatbot.updateUserInfo(currentUser);
+         }
+       }
+     }
+
+    // Logout function
+    async function logout() {
+      try {
+        await fetch(`${SERVER_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+      } catch (error) {
+        console.error('Logout error:', error);
+      } finally {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+    }
+
+    // Setup event listeners
+    function setupEventListeners() {
+      // Hide suggestions when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.relative')) {
+          hideAllSuggestions();
+        }
+      });
+    }
+
+    // Initialize Leaflet Map (free alternative to Google Maps)
+    function initMap() {
+      // Default to a small city center (you can change these coordinates)
+      const defaultLocation = [12.9716, 77.5946]; // Bangalore coordinates as example
+      
+      map = L.map('map').setView(defaultLocation, 13);
+
+      // Add OpenStreetMap tiles (free)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      console.log('Map initialized successfully');
+    }
+
+    // Show location suggestions
+    function showSuggestions(containerId, query) {
+      const container = document.getElementById(containerId);
+      if (!query.trim()) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      const filtered = popularLocations.filter(location => 
+        location.name.toLowerCase().includes(query.toLowerCase())
+      );
+
+      if (filtered.length > 0) {
+        container.innerHTML = filtered.map(location => `
+          <div class="suggestion-item p-3 border-b last:border-b-0" 
+               onclick="selectLocation('${containerId}', '${location.name}')">
+            <div class="flex items-center">
+              <span class="text-gray-600 mr-2">📍</span>
+              <span class="font-medium">${location.name}</span>
+            </div>
+          </div>
+        `).join('');
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+
+    // Select location from suggestions
+    function selectLocation(containerId, locationName) {
+      const inputId = containerId === 'fromSuggestions' ? 'fromLocation' : 'toLocation';
+      document.getElementById(inputId).value = locationName;
+      hideAllSuggestions();
+    }
+
+    // Hide all suggestion containers
+    function hideAllSuggestions() {
+      document.getElementById('fromSuggestions').classList.add('hidden');
+      document.getElementById('toSuggestions').classList.add('hidden');
+    }
+
+         // Load buses from server
+     async function loadBuses() {
+       try {
+         // For now, use demo data since we don't have authentication
+         // TODO: Connect to your PHP API when ready
+         const demoBuses = [
+           {
+             id: 'BUS-001',
+             lat: 12.9716 + (Math.random() - 0.5) * 0.01,
+             lng: 77.5946 + (Math.random() - 0.5) * 0.01,
+             speed: Math.floor(Math.random() * 40) + 10,
+             occupancy: Math.floor(Math.random() * 100),
+             routeId: 'PB-12'
+           },
+           {
+             id: 'BUS-002',
+             lat: 12.9716 + (Math.random() - 0.5) * 0.01,
+             lng: 77.5946 + (Math.random() - 0.5) * 0.01,
+             speed: Math.floor(Math.random() * 40) + 10,
+             occupancy: Math.floor(Math.random() * 100),
+             routeId: 'PB-15'
+           }
+         ];
+         
+         buses = demoBuses;
+         updateBusDisplay();
+         updateMapMarkers();
+         updateConnectionStatus(true);
+       } catch (error) {
+         console.error('Error loading buses:', error);
+         updateConnectionStatus(false);
+       }
+     }
+
+    // Update connection status
+    function updateConnectionStatus(isConnected = true) {
+      const statusIndicator = document.getElementById('connectionStatus');
+      const statusText = document.getElementById('statusText');
+      
+      if (isConnected) {
+        statusIndicator.className = 'inline-block w-2 h-2 bg-green-500 rounded-full mr-2';
+        statusText.textContent = 'Connected to server';
+      } else {
+        statusIndicator.className = 'inline-block w-2 h-2 bg-red-500 rounded-full mr-2';
+        statusText.textContent = 'Connection error - retrying...';
+      }
+    }
+
+    // Update bus display in sidebar
+    function updateBusDisplay() {
+      const busList = document.getElementById('busList');
+      const busCount = document.getElementById('busCount');
+      
+      busCount.textContent = buses.length;
+      
+      if (buses.length === 0) {
+        busList.innerHTML = '<p class="text-gray-500 text-center py-4">No active buses</p>';
+        return;
+      }
+
+      busList.innerHTML = buses.map(bus => `
+        <div class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer" onclick="focusBus('${bus.id}')">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="font-semibold text-gray-800">Bus ${bus.id}</p>
+              <p class="text-sm text-gray-600">Route: ${bus.routeId || 'PB-12'}</p>
+              <p class="text-xs text-gray-500">Speed: ${bus.speed || 0} km/h</p>
+            </div>
+            <div class="text-right">
+              <span class="inline-block w-3 h-3 bg-green-500 rounded-full"></span>
+              <p class="text-xs text-gray-500 mt-1">${bus.occupancy || 0}% full</p>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Update map markers
+    function updateMapMarkers() {
+      // Clear existing markers
+      Object.values(markers).forEach(marker => map.removeLayer(marker));
+      markers = {};
+
+      // Add new markers
+      buses.forEach(bus => {
+        if (bus.lat && bus.lng) {
+          const lat = parseFloat(bus.lat);
+          const lng = parseFloat(bus.lng);
+          
+          // Create custom bus icon
+          const busIcon = L.divIcon({
+            className: 'bus-icon',
+            html: '🚌',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+          });
+
+          const marker = L.marker([lat, lng], { icon: busIcon }).addTo(map);
+
+          // Add popup with bus info
+          const popupContent = `
+            <div class="p-2">
+              <h3 class="font-bold">Bus ${bus.id}</h3>
+              <p>Route: ${bus.routeId || 'PB-12'}</p>
+              <p>Speed: ${bus.speed || 0} km/h</p>
+              <p>Occupancy: ${bus.occupancy || 0}%</p>
+            </div>
+          `;
+          marker.bindPopup(popupContent);
+
+          markers[bus.id] = marker;
+        }
+      });
+    }
+
+    // Focus on specific bus
+    function focusBus(busId) {
+      const bus = buses.find(b => b.id === busId);
+      if (bus && bus.lat && bus.lng) {
+        const lat = parseFloat(bus.lat);
+        const lng = parseFloat(bus.lng);
+        map.setView([lat, lng], 15);
+        if (markers[busId]) {
+          markers[busId].openPopup();
+        }
+      }
+    }
+
+    // Enhanced search route function
+    function searchRoute() {
+      const from = document.getElementById('fromLocation').value.trim();
+      const to = document.getElementById('toLocation').value.trim();
+      
+      if (!from || !to) {
+        alert('Please enter both starting location and destination');
+        return;
+      }
+
+      // Find matching route
+      const matchingRoute = routes.find(route => 
+        (route.from.toLowerCase().includes(from.toLowerCase()) || 
+         route.to.toLowerCase().includes(from.toLowerCase())) &&
+        (route.to.toLowerCase().includes(to.toLowerCase()) || 
+         route.from.toLowerCase().includes(to.toLowerCase()))
+      );
+
+      if (matchingRoute) {
+        displayRouteResults(matchingRoute, from, to);
+        drawRouteOnMap(matchingRoute);
+      } else {
+        // Show generic route info
+        displayGenericRoute(from, to);
+      }
+
+      // Show route results section
+      document.getElementById('routeResults').classList.remove('hidden');
+      
+      // Scroll to route results
+      document.getElementById('routeResults').scrollIntoView({ 
+        behavior: 'smooth' 
+      });
+    }
+
+    // Display route results
+    function displayRouteResults(route, from, to) {
+      const routeInfo = document.getElementById('routeInfo');
+      
+      routeInfo.innerHTML = `
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-green-800">Route Found!</h3>
+            <span class="bg-green-500 text-white px-3 py-1 rounded-full text-sm">${route.id}</span>
+          </div>
+          
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <p class="text-sm text-gray-600">From</p>
+              <p class="font-semibold">${from}</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600">To</p>
+              <p class="font-semibold">${to}</p>
+            </div>
+          </div>
+          
+          <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div class="text-center">
+              <p class="text-sm text-gray-600">Duration</p>
+              <p class="font-bold text-lg">${route.duration}</p>
+            </div>
+            <div class="text-center">
+              <p class="text-sm text-gray-600">Frequency</p>
+              <p class="font-bold text-lg">${route.frequency}</p>
+            </div>
+            <div class="text-center">
+              <p class="text-sm text-gray-600">Next Bus</p>
+              <p class="font-bold text-lg">8 mins</p>
+            </div>
+          </div>
+          
+          <div>
+            <p class="text-sm text-gray-600 mb-2">Stops:</p>
+            <div class="flex flex-wrap gap-2">
+              ${route.stops.map(stop => 
+                `<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">${stop}</span>`
+              ).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Display generic route info
+    function displayGenericRoute(from, to) {
+      const routeInfo = document.getElementById('routeInfo');
+      
+      routeInfo.innerHTML = `
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-yellow-800">Route Information</h3>
+            <span class="bg-yellow-500 text-white px-3 py-1 rounded-full text-sm">Multiple Routes</span>
+          </div>
+          
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <p class="text-sm text-gray-600">From</p>
+              <p class="font-semibold">${from}</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600">To</p>
+              <p class="font-semibold">${to}</p>
+            </div>
+          </div>
+          
+          <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div class="text-center">
+              <p class="text-sm text-gray-600">Estimated Duration</p>
+              <p class="font-bold text-lg">25-45 mins</p>
+            </div>
+            <div class="text-center">
+              <p class="text-sm text-gray-600">Available Routes</p>
+              <p class="font-bold text-lg">3 routes</p>
+            </div>
+            <div class="text-center">
+              <p class="text-sm text-gray-600">Next Bus</p>
+              <p class="font-bold text-lg">5-15 mins</p>
+            </div>
+          </div>
+          
+          <div>
+            <p class="text-sm text-gray-600 mb-2">Suggested Routes:</p>
+            <div class="space-y-2">
+              <div class="flex justify-between items-center p-2 bg-white rounded">
+                <span class="font-medium">PB-12</span>
+                <span class="text-sm text-gray-600">Via Central Station</span>
+              </div>
+              <div class="flex justify-between items-center p-2 bg-white rounded">
+                <span class="font-medium">PB-21</span>
+                <span class="text-sm text-gray-600">Via Market Square</span>
+              </div>
+              <div class="flex justify-between items-center p-2 bg-white rounded">
+                <span class="font-medium">PB-45</span>
+                <span class="text-sm text-gray-600">Direct Route</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Draw route on map
+    function drawRouteOnMap(route) {
+      // Remove existing route line
+      if (routeLine) {
+        map.removeLayer(routeLine);
+      }
+
+      // Get coordinates for route stops
+      const routeCoordinates = route.stops.map(stop => {
+        const location = popularLocations.find(loc => loc.name === stop);
+        return location ? [location.lat, location.lng] : [12.9716, 77.5946];
+      });
+
+      // Draw route line
+      routeLine = L.polyline(routeCoordinates, {
+        color: '#3b82f6',
+        weight: 4,
+        opacity: 0.8,
+        dashArray: '10, 10'
+      }).addTo(map);
+
+      // Fit map to show entire route
+      map.fitBounds(routeLine.getBounds());
+    }
+
+         // Add demo bus (for testing)
+     function addDemoBus() {
+       const demoBus = {
+         id: 'DEMO-' + Date.now(),
+         lat: 12.9716 + (Math.random() - 0.5) * 0.01,
+         lng: 77.5946 + (Math.random() - 0.5) * 0.01,
+         speed: Math.floor(Math.random() * 40) + 10,
+         occupancy: Math.floor(Math.random() * 100),
+         routeId: 'PB-12'
+       };
+
+       // Add to local buses array for immediate display
+       buses.push(demoBus);
+       updateBusDisplay();
+       updateMapMarkers();
+       
+       console.log('Demo bus added locally:', demoBus);
+       
+       // TODO: When you have the PHP API running, uncomment this:
+       /*
+       fetch('../api/buses.php', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json'
+         },
+         body: JSON.stringify(demoBus)
+       })
+       .then(response => response.json())
+       .then(data => {
+         console.log('Demo bus added to server:', data);
+       })
+       .catch(error => {
+         console.error('Error adding demo bus to server:', error);
+       });
+       */
+     }
+
+    // Initialize when page loads
+    window.onload = initApp;
+  </script>
+
+</body>
+</html>

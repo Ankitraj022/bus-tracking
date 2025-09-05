@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page - Bus Tracking System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚌 Bus Tracking System - Test Page</h1>
+        
+        <div class="status success">
+            <h3>✅ Web Server Status: RUNNING</h3>
+            <p>If you can see this page, your XAMPP Apache server is working correctly!</p>
+        </div>
+
+        <h2>🔗 Quick Navigation</h2>
+        <div>
+            <a href="index.html" class="btn">🏠 Home Page</a>
+            <a href="Docs/index.html" class="btn">🚌 Main Application</a>
+            <a href="admin/dashboard.php" class="btn btn-warning">⚙️ Admin Dashboard</a>
+            <a href="setup_database.php" class="btn btn-success">🗄️ Setup Database</a>
+        </div>
+
+        <h2>📋 System Check</h2>
+        <div class="status warning">
+            <h4>⚠️ Before using the system, please ensure:</h4>
+            <ul>
+                <li>XAMPP Control Panel is open</li>
+                <li>Apache service is running (green status)</li>
+                <li>MySQL service is running (green status)</li>
+                <li>Your project is in: <code>C:\xampp\htdocs\Bus-tracking\</code></li>
+            </ul>
+        </div>
+
+        <h2>🚀 Next Steps</h2>
+        <ol>
+            <li><strong>First:</strong> <a href="setup_database.php">Setup Database</a> to create tables and sample data</li>
+            <li><strong>Then:</strong> <a href="admin/dashboard.php">Access Admin Dashboard</a> (login: admin/admin123)</li>
+            <li><strong>Finally:</strong> <a href="Docs/index.html">Use Main Application</a> to track buses</li>
+        </ol>
+
+        <h2>🔧 Troubleshooting</h2>
+        <div class="status error">
+            <h4>❌ If you get "File not found" errors:</h4>
+            <ul>
+                <li>Check that XAMPP is running</li>
+                <li>Verify file paths are correct</li>
+                <li>Make sure you're accessing via: <code>http://localhost/Bus-tracking/</code></li>
+                <li>Check that all files are in the correct folders</li>
+            </ul>
+        </div>
+
+        <h2>📁 File Structure Check</h2>
+        <p>Your project should have these main folders:</p>
+        <ul>
+            <li><code>Docs/</code> - Main application files</li>
+            <li><code>admin/</code> - Admin dashboard</li>
+            <li><code>api/</code> - PHP API endpoints</li>
+            <li><code>database/</code> - Database configuration</li>
+        </ul>
+
+        <hr style="margin: 30px 0;">
+        <p><em>This test page confirms your web server is working. If you can see this, the issue was likely with file paths or missing files.</em></p>
+    </div>
+</body>
+</html>
