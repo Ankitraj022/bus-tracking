@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: bus-tracking
+    env: node
+    plan: free
+    branch: main
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    envVars:
+      - key: JWT_SECRET
+        value: "super-secret-ankit-2025"
+      - key: NODE_ENV
+        value: "production"
